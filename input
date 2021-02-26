@@ -1,0 +1,24 @@
+&sml_param
+  sml_dt=0.5D0
+  sml_nstep=200
+  sml_mass=5.448D-4 2D0
+  sml_charge=-1D0 1D0
+  sml_den=1D19 1D19
+  sml_t_ev=390 260
+  sml_flow=0.0 0.0
+  sml_isp=0
+  sml_nsp=1
+/
+
+&f0_param
+  f0_nvp=15
+  f0_nmu=31
+  f0_vp_max=4D0
+  f0_smu_max=4D0
+  f0_node_mult=1
+  f0_velo_aniso=0.769D0
+/
+
+&col_f_param
+  col_f_nthreads=1
+/
