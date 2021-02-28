@@ -6,6 +6,6 @@ with ion and electron temperatures also different. Should replicate Figure 3 fro
 **NOTE: Currently not working, density rising too much**
 
 Code relies on the ReSeg model and trained weights, and training on a GPU (can modify for CPU testing).
-ReSeg model: https://gitlab.com/adener/ml-collision-python.git
-Trained weights (ions+electrons): https://drive.google.com/drive/folders/1PB-BqBy-i8aQI1AaophbfTRkuodXukV2?usp=sharing
+* ReSeg model: https://gitlab.com/adener/ml-collision-python.git
+* Trained weights (ions+electrons): https://drive.google.com/drive/folders/1PB-BqBy-i8aQI1AaophbfTRkuodXukV2?usp=sharing
 
