@@ -10,19 +10,20 @@ import h5py
 
 class MLCollisions(torch.nn.Module):
 
-    def __init__(self,file_model,file_log,file_stats):
+    def __init__(self,file_model,file_log,file_stats,normalize=True):
         super().__init__()
         self.file_stats = file_stats
         self.read_stats()
 
         with open(file_log, 'rb') as pickled_log:
             log = pickle.load(pickled_log)
-        num_targets = len(log['targets'])
-        model = ReSeg(channels=num_targets)
+        self.channels = len(log['targets'])
+        model = ReSeg(channels=self.channels)
         out = torch.load(file_model)
         model.load_state_dict(out['state_dict'])
         model.eval()
         self.model = model.cuda()
+        self.normalize = normalize
 
     def read_stats(self):
         fh = h5py.File(self.file_stats,'r')
@@ -35,33 +36,48 @@ class MLCollisions(torch.nn.Module):
 
     def normalize_f(self,f):
         return ((f - self.mean_f)/self.std_f)
-
+    
+    def unnormalize_f(self,f):
+        return f*self.std_f + self.mean_f
+    
+    def normalize_fdf(self,fdf):
+        return ((fdf - self.mean_fdf)/self.std_fdf)
+    
+    def unnormalize_fdf(self,fdfnorm):
+        if self.channels==1:
+            return fdfnorm*self.std_fdf[:,1,:,:] + self.mean_fdf[:,1,:,:]
+        else:
+            return fdfnorm*self.std_fdf + self.mean_fdf
+    
     def preprocess(self,f):
         #remove negative inds
         f[f<0] = torch.tensor(0.0).double()
         #if adiabatic electron, add dimension for electrons
-        #if torch.tensor(f.size())[0]==torch.tensor(1): #(assume for now adiabatic electrons, otherwise trace issue)
-        #f = F.pad(f,(0,0,0,0,0,0,1,0))
+        #if self.channels>1:
+        #    f = F.pad(f,(0,0,0,0,0,0,1,0))
         #switch order for pytorch model to [Ngrid,Nsp,Nmu,Nvpara]
         f = f.permute(2,0,1,3)
         #pad mu direction (so 32,32)
         f = F.pad(f,(0,1,0,0),mode='replicate')
-        #normalize and convert to float for input to model
-        return f
+        return f.contiguous()
 
-    def postprocess(self,fdfnorm,fpre):
-        #unnormalize (ions only)
-        df = fdfnorm*self.std_fdf + self.mean_fdf - fpre
+    def postprocess(self,df):
         #remove extra vpara dimension
         df = df[:,:,:,:-1]
         #switch order back to XGC order of [Nsp,Nmu,Ngrid,Nvpara] and convert to double
-        return df.permute(1,2,0,3)
+        return df.permute(1,2,0,3).contiguous()
+    
+    def forward_nn(self,fnorm):
+        return self.model(fnorm.float().cuda()).cpu().double()
 
     def forward(self,f):
-        #this assumed fpre comes in preprocessed and on the GPU
         fpre = self.preprocess(torch.from_numpy(f))
-        fnorm = self.normalize_f(fpre)
-        return self.postprocess(self.model(fnorm.float().cuda()).cpu().double(),fpre)
+        if normalize:
+            fpre = self.normalize_f(fpre)
+        dfout = self.forward_nn(fpre)
+        if normalize:
+            dfout = self.unnormalize_fdf(dfout) - fpre
+        return self.postprocess(dfout)
         #return self.postprocess(self.model(fnorm)).cpu()
         #return self.model((fpre - self.mean_f)/self.std_f)*self.std_fdf + self.mean_fdf - torch.unsqueeze(fpre[:,1,:,:],1)
 
