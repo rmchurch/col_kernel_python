@@ -2,13 +2,14 @@
 import numpy as np
 import f90nml
 from modules import sml_param,f0_param,col_f_param
-from ml_collisions import MLCollisions
+#from ml_collisions import MLCollisions
+from ml_collisions_hong import MLCollisions
 import matplotlib.pyplot as plt; plt.ion()
 import torch
 import torch.nn.functional as F
 
 #TODO put into arg parser
-plot=False #True
+plot=True
 use_jet=False
 use_ion=True
 normalize = True#this should be in the log eventually
@@ -66,7 +67,7 @@ if use_jet:
     sml['sml_t_ev'] = f0_T_ev
     fh.close()
 elif use_ion:
-    fh = np.load('outputs.0.npz')
+    fh = np.load('outputs.0.npz_fno_original')
     f0_f[0,0,...] = fh['data_true'][0,0,:,:-1]
     sml['sml_t_ev'] = fh['temp'][0,0]
 
@@ -76,7 +77,9 @@ f0_f_init = f0_f.copy()
 
 
 ##collison operator setup
-file_model = '/scratch/gpfs/rmc2/ml_collisions/mic_parallel/logs/models/model_best.285218.pth.tar'
+#file_model = '/scratch/gpfs/rmc2/ml_collisions/mic_parallel/model_best.285218.pth.tar'
+file_model = '/scratch/gpfs/rmc2/ml_collisions/col_kernel_python/model_iononly_hong_v2/iononly_model_best.pth.tar'
+#file_model = '/scratch/gpfs/rmc2/ml_collisions/col_kernel_python/model_iononly_hong_entropyon/model_iononly_entropyon.pth.tar'
 #model_best.254407.pth.tar'
 collisions = MLCollisions(file_model, channels=1)
 
@@ -126,7 +129,10 @@ entropy = np.zeros(den.shape)
 dden = np.zeros(den.shape)
 dupar = np.zeros(den.shape)
 dTperp = np.zeros(den.shape); dTpara = np.zeros(den.shape)
-if plot: fig,ax = plt.subplots(1,1)
+if plot: 
+    fig,ax = plt.subplots(1,1)
+    cax = make_axes_locatable(ax).append_axes("right", size="5%", pad="2%")
+
 for i in range(sml['sml_nstep']):
     print('Start step %d' % i)
     den[...,i],upar[...,i],Tperp[...,i],Tpara[...,i],entropy[...,i] = calcMoments(fhat)
@@ -141,7 +147,8 @@ for i in range(sml['sml_nstep']):
     dden[...,i],dupar[...,i],dTperp[...,i],dTpara[...,i],_ = calcMoments(df)
     if plot:
         ax.clear()
-        ax.contourf(fhat[0,0,...],100)  
+        cf = ax.contourf(df[0,0,...],100)  
+        cb = fig.colorbar(cf,cax=cax)
         plt.suptitle('Step %d' % i)
         fig.canvas.draw()
         fig.canvas.flush_events()
