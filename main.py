@@ -10,6 +10,7 @@ import torch.nn.functional as F
 #TODO put into arg parser
 plot=False #True
 use_jet=False
+use_ion=True
 normalize = True#this should be in the log eventually
 
 ##setup - read in namedlist
@@ -64,6 +65,10 @@ if use_jet:
     f0_T_ev = fh['f0_T_ev'][:,ind]
     sml['sml_t_ev'] = f0_T_ev
     fh.close()
+elif use_ion:
+    fh = np.load('outputs.0.npz')
+    f0_f[0,0,...] = fh['data_true'][0,0,:,:-1]
+    sml['sml_t_ev'] = fh['temp'][0,0]
 
 #save initial
 f0_f_init = f0_f.copy()
@@ -71,7 +76,8 @@ f0_f_init = f0_f.copy()
 
 
 ##collison operator setup
-file_model = '/scratch/gpfs/rmc2/ml_collisions/mic_parallel/model_best.254407.pth.tar'
+file_model = '/scratch/gpfs/rmc2/ml_collisions/mic_parallel/logs/models/model_best.285218.pth.tar'
+#model_best.254407.pth.tar'
 collisions = MLCollisions(file_model, channels=1)
 
 
@@ -92,7 +98,10 @@ vol[:,0] = 0.5/3.*vol[:,1] #would the 1/3 be cancelled by conv_factor?
 vol[:,-1] = 0.5*(vperp.size-1./3.)/(vperp.size-1.)*vol[:,-2]
 
 #convert f0_f to the collision operator representation
-fhat = np.einsum('ijkl,j,k->ijkl',f0_f,conv_factor,1./vperp1)
+if use_ion:
+    fhat = f0_f.copy()
+else:
+    fhat = np.einsum('ijkl,j,k->ijkl',f0_f,conv_factor,1./vperp1)
 
 def calcMoments(f):
     den = np.einsum('kijl,ij->ik',f,vol)
@@ -109,6 +118,7 @@ ions = True
 electrons = True
 if collisions.channels==1: electrons=False
 #Ngrid, Nsp
+Nneg = 0
 den = np.zeros((f0_f.shape[1],f0_f.shape[0],sml['sml_nstep']))
 upar = np.zeros(den.shape)
 Tperp = np.zeros(den.shape); Tpara = np.zeros(den.shape)
@@ -116,23 +126,28 @@ entropy = np.zeros(den.shape)
 dden = np.zeros(den.shape)
 dupar = np.zeros(den.shape)
 dTperp = np.zeros(den.shape); dTpara = np.zeros(den.shape)
-if plot: fig,ax = plt.subplots(2,4)
+if plot: fig,ax = plt.subplots(1,1)
 for i in range(sml['sml_nstep']):
     print('Start step %d' % i)
     den[...,i],upar[...,i],Tperp[...,i],Tpara[...,i],entropy[...,i] = calcMoments(fhat)
-    print('n: %.2e \t upar: %.2e \t Tperp: %.2e \t Tpara: %.2e ' % (den[0,0,i],upar[0,0,i],Tperp[0,0,i],Tpara[0,0,i]))
+    print('n: %.2e \t upar: %.2e \t Tperp: %.2e \t Tpara: %.2e \t Nneg: %d ' % (den[0,0,i],upar[0,0,i],Tperp[0,0,i],Tpara[0,0,i], Nneg))
 
     temp = (Tpara[...,i] + 2*Tperp[...,i])/3.
-    fin = F.pad(torch.from_numpy(fhat), (1,0,0,0),mode='replicate') 
+    print(temp)
+    fin = F.pad(torch.from_numpy(fhat), (0,1,0,0),mode='replicate') 
     fdf = collisions.forward(fin.cuda(), torch.from_numpy(temp).cuda()).detach().cpu().numpy() #pre- and post-processing in forward() pass
     df = np.maximum(fdf[...,:-1], fhat) - fhat
 
     dden[...,i],dupar[...,i],dTperp[...,i],dTpara[...,i],_ = calcMoments(df)
     if plot:
+        ax.clear()
+        ax.contourf(fhat[0,0,...],100)  
         plt.suptitle('Step %d' % i)
-        plt.draw()
-        plt.pause(0.1)
+        fig.canvas.draw()
+        fig.canvas.flush_events()
+        plt.pause(2)
     #remove negative
+    Nneg = np.sum(fhat<0)
     fhat[fhat<0] = 1e-16
     fhat += df
 
