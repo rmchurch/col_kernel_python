@@ -3,7 +3,7 @@ import numpy as np
 import f90nml
 from modules import sml_param,f0_param,col_f_param
 #from ml_collisions import MLCollisions
-from ml_collisions_hong import MLCollisions
+from ml_collisions import MLCollisions
 import matplotlib.pyplot as plt; plt.ion()
 import torch
 import torch.nn.functional as F
@@ -78,9 +78,10 @@ f0_f_init = f0_f.copy()
 
 ##collison operator setup
 #file_model = '/scratch/gpfs/rmc2/ml_collisions/mic_parallel/model_best.285218.pth.tar'
-file_model = '/scratch/gpfs/rmc2/ml_collisions/col_kernel_python/model_iononly_hong_v2/iononly_model_best.pth.tar'
+#file_model = '/scratch/gpfs/rmc2/ml_collisions/col_kernel_python/model_iononly_hong_v2/iononly_model_best.pth.tar'
 #file_model = '/scratch/gpfs/rmc2/ml_collisions/col_kernel_python/model_iononly_hong_entropyon/model_iononly_entropyon.pth.tar'
 #model_best.254407.pth.tar'
+file_model = '../iononly_entropyon_03_24_2022/logs/model_best_278.pth.tar'
 collisions = MLCollisions(file_model, channels=1)
 
 
@@ -129,7 +130,8 @@ entropy = np.zeros(den.shape)
 dden = np.zeros(den.shape)
 dupar = np.zeros(den.shape)
 dTperp = np.zeros(den.shape); dTpara = np.zeros(den.shape)
-if plot: 
+if plot:
+    from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable 
     fig,ax = plt.subplots(1,1)
     cax = make_axes_locatable(ax).append_axes("right", size="5%", pad="2%")
 
