@@ -1,6 +1,6 @@
 &sml_param
   sml_dt=0.5D0
-  sml_nstep=10
+  sml_nstep=20
   sml_mass=2D0
   sml_charge= 1D0
   !sml_den=8D19

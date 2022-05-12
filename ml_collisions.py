@@ -11,7 +11,7 @@ import numpy as np
 
 class MLCollisions(torch.nn.Module):
 
-    def __init__(self, file_model, zca, device, channels=1, dropout=0.5):
+    def __init__(self, file_model, zca, device, channels=1, dropout=0.5, train_df=False):
         super().__init__()
         self.channels = channels
         out = torch.load(file_model,map_location=device)
@@ -30,6 +30,7 @@ class MLCollisions(torch.nn.Module):
         self.std = 0.0
         self.zca = zca
         self.device = device
+        self.train_df = train_df
 
     def stats(self,f):
         self.mean = f.mean(dim=(2,3),keepdim=True)
@@ -52,10 +53,13 @@ class MLCollisions(torch.nn.Module):
     def postprocess(self, fnorm):
         return fnorm*self.std + self.mean
 
-    def forward(self,fnorm,temp):
+    def forward(self, fnorm, temp):
         # self.stats(f)
         #fnorm, tempnorm = self.preprocess(f.to(self.device),temp.to(self.device))
-        fdfnorm = self.model(fnorm) #, tempnorm)
-        #fdf = self.postprocess(fdfnorm)
+        if self.train_df:
+            fdfnorm = fnorm + self.model(fnorm)
+        else:
+            fdfnorm = self.model(fnorm)
+        # fdf = self.postprocess(fdfnorm)
         return fdfnorm
 
