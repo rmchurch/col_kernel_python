@@ -97,16 +97,16 @@ class MLCollisions(torch.nn.Module):
 
     def log_transform(self, X):
         if torch.is_tensor(X):
-            Xtran = torch.log(X)
+            Xtran = torch.log(X/1e10)
         else:
-            Xtran = np.log(X)
+            Xtran = np.log(X/1e10)
         return Xtran
 
     def log_untransform(self, Xtran):
         if torch.is_tensor(Xtran):
-            X = torch.exp(Xtran)
+            X = torch.exp(Xtran)*1e10
         else:
-            X = np.exp(Xtran)
+            X = np.exp(Xtran)*1e10
         return X
 
     def crop(self, data):
