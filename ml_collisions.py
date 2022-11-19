@@ -17,6 +17,7 @@ class MLCollisions(torch.nn.Module):
         out = torch.load(file_model,map_location=device)
         model = ReSeg(channels=channels,dropout=dropout).to(device)
         state_dict = out['state_dict']
+        torch.nn.modules.utils.consume_prefix_in_state_dict_if_present(state_dict, "module.")
         #from collections import OrderedDict
         #new_state_dict = OrderedDict()
         #for k, v in state_dict.items():
