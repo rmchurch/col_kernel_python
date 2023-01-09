@@ -11,7 +11,7 @@ import numpy as np
 
 class MLCollisions(torch.nn.Module):
 
-    def __init__(self, file_model, device, channels=1, dropout=0.5, train_df=False, minmax=False, log_tran=False, scaling='normalize'):
+    def __init__(self, file_model, device, channels=1, dropout=0.5, train_df=False, minmax=False, div_log_tran=False, div_log_tran_divisor=1e10, scaling='normalize'):
         super().__init__()
         self.channels = channels
         out = torch.load(file_model,map_location=device)
@@ -32,7 +32,8 @@ class MLCollisions(torch.nn.Module):
         self.device = device
         self.train_df = train_df
         self.minmax = minmax
-        self.log_tran = log_tran
+        self.div_log_tran = div_log_tran
+        self.div_log_tran_divisor = div_log_tran_divisor
         self.scaling = scaling
 
     def stats(self,f):
@@ -73,8 +74,8 @@ class MLCollisions(torch.nn.Module):
         print(std)
 
     def preprocess(self, f):
-        if self.log_tran:
-            f = self.log_transform(f)
+        if self.div_log_tran:
+            f = self.div_log_transform(f, self.div_log_tran_divisor)
         if self.scaling == 'normalize':
             self.stats(f)
             f = (f - self.mean)/self.std
@@ -83,8 +84,8 @@ class MLCollisions(torch.nn.Module):
     def postprocess(self, f):
         if self.scaling == 'normalize':
             f = f*self.std + self.mean
-        if self.log_tran:
-            f = self.log_untransform(f)
+        if self.div_log_tran:
+            f = self.div_log_untransform(f, self.div_log_tran_divisor)
         return f
 
     def forward(self, fnorm):
@@ -96,18 +97,18 @@ class MLCollisions(torch.nn.Module):
         fdfnorm = self.crop(fdfnorm)
         return fdfnorm
 
-    def log_transform(self, X):
+    def div_log_transform(self, X, divisor):
         if torch.is_tensor(X):
-            Xtran = torch.log(X)
+            Xtran = torch.log(X/divisor)
         else:
-            Xtran = np.log(X)
+            Xtran = np.log(X/divisor)
         return Xtran
 
-    def log_untransform(self, Xtran):
+    def div_log_untransform(self, Xtran, divisor):
         if torch.is_tensor(Xtran):
-            X = torch.exp(Xtran)
+            X = torch.exp(Xtran)*divisor
         else:
-            X = np.exp(Xtran)
+            X = np.exp(Xtran)*divisor
         return X
 
     def crop(self, data):
