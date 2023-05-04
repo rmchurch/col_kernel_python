@@ -11,7 +11,7 @@ import numpy as np
 
 class MLCollisions(torch.nn.Module):
 
-    def __init__(self, file_model, device, channels=1, dropout=0.5, train_df=False, minmax=False, div_log_tran=False, div_log_tran_divisor=1e10, scaling='normalize'):
+    def __init__(self, file_model, device, channels=1, dropout=0.5, train_df=False, minmax=False, div_log_tran=False, div_log_tran_divisor=1e10, scaling='normalize', crop=None, pad=None):
         super().__init__()
         self.channels = channels
         out = torch.load(file_model,map_location=device)
@@ -35,6 +35,8 @@ class MLCollisions(torch.nn.Module):
         self.div_log_tran = div_log_tran
         self.div_log_tran_divisor = div_log_tran_divisor
         self.scaling = scaling
+        self.crop = self._crop if crop is None else crop
+        self.pad = self._pad if pad is None else pad
 
     def stats(self,f):
         if self.minmax:
@@ -111,8 +113,8 @@ class MLCollisions(torch.nn.Module):
             X = np.exp(Xtran)*divisor
         return X
 
-    def crop(self, data):
+    def _crop(self, data):
         return data[...,:-1]
 
-    def pad(self, data):
+    def _pad(self, data):
         return F.pad(data, (0,1,0,0), mode='replicate')
