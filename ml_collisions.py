@@ -11,7 +11,7 @@ import numpy as np
 
 class MLCollisions(torch.nn.Module):
 
-    def __init__(self, file_model, device, channels=1, dropout=0.5, train_df=False, minmax=False, div_log_tran=False, div_log_tran_divisor=1e10, scaling='normalize', crop=None, pad=None):
+    def __init__(self, file_model, device, channels=1, dropout=0.5, train_df=False, minmax=False, div_log_tran=False, div_log_tran_divisor=1e10, scaling='normalize', crop=None, pad=None, fmax=None, fmin=None):
         super().__init__()
         self.channels = channels
         out = torch.load(file_model,map_location=device)
@@ -37,6 +37,8 @@ class MLCollisions(torch.nn.Module):
         self.scaling = scaling
         self.crop = self._crop if crop is None else crop
         self.pad = self._pad if pad is None else pad
+        self.fmax = fmax
+        self.fmin = fmin
 
     def stats(self,f):
         if self.minmax:
@@ -81,9 +83,13 @@ class MLCollisions(torch.nn.Module):
         if self.scaling == 'normalize':
             self.stats(f)
             f = (f - self.mean)/self.std
+        if self.scaling == 'normalizeall':
+            f = (f - self.fmin)/(self.fmax-self.fmin)
         return f
 
     def postprocess(self, f):
+        if self.scaling == 'normalizeall':
+            f = f*(self.fmax-self.fmin) + self.fmin
         if self.scaling == 'normalize':
             f = f*self.std + self.mean
         if self.div_log_tran:
