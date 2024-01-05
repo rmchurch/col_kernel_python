@@ -16,6 +16,7 @@ class MLCollisions(torch.nn.Module):
         self.channels = channels
         out = torch.load(file_model,map_location=device)
         model = ReSeg(channels=channels,dropout=dropout).to(device)
+        model = torch.compile(model)
         state_dict = out['state_dict']
         torch.nn.modules.utils.consume_prefix_in_state_dict_if_present(state_dict, "module.")
         #from collections import OrderedDict
@@ -96,10 +97,11 @@ class MLCollisions(torch.nn.Module):
             f = self.div_log_untransform(f, self.div_log_tran_divisor)
         return f
 
-    def forward(self, fnorm):
+    def forward(self, fnorm, coulomb_factor):
         fnorm = self.pad(fnorm)
         if self.train_df:
-            fdfnorm = fnorm + self.model(fnorm)
+            dt = 1.34e-7
+            fdfnorm = fnorm + dt*coulomb_factor*self.model(fnorm)
         else:
             fdfnorm = self.model(fnorm)
         fdfnorm = self.crop(fdfnorm)
